@@ -2,16 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Xml;
-using System.Xml.Linq;
-using System.Text.RegularExpressions;
 using System.IO;
 using System.Drawing;
-using System.Threading;
 using System.Net;
 using System.ComponentModel;
 using System.Windows.Forms;
-using System.Runtime.Serialization.Json;
 using Newtonsoft.Json;
 using FNF.Utility;
 using FNF.Controls;
@@ -126,6 +121,7 @@ namespace Plugin_FC2 {
             } else { 
                 this.ResetCommentIndex();
                 this._Settings.TimeSignal = !this._Settings.TimeSignal;
+                Pub.ClearTalkTasks();
             }
         }
 
@@ -247,18 +243,6 @@ namespace Plugin_FC2 {
             public int status;
             public IList<Comment> comments;
             public long last_comment_index;
-
-            //public CommentData(XmlDocument doc) {
-            //    XmlNodeList elem = doc.GetElementsByTagName("status");
-            //    status = elem[0].InnerText;
-
-            //    if(status == "0") {
-            //        XmlNodeList comments = doc.GetElementsByTagName("comments");
-            //        foreach(XmlNode comment in comments) {
-            //            string userName = comment.SelectSingleNode("user_name").InnerText;
-            //        }
-            //    }
-            //}
         }
 
         public class Comment {
@@ -272,6 +256,13 @@ namespace Plugin_FC2 {
             public string comment;
             public string color;
             public string size;
+            public SystemComment system_comment;
+        }
+
+        public class SystemComment {
+            public string type;
+            public int tip_amount;
+            public int tip_total;
         }
 
         // 設定クラス（設定画面表示・ファイル保存を簡略化。publicなメンバだけ保存される。XmlSerializerで処理できるクラスのみ使用可。）
