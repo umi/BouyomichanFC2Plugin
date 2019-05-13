@@ -16,17 +16,22 @@ using FNF.BouyomiChanApp;
 namespace Plugin_FC2 {
     public class Plugin_FC2 : IPlugin {
         #region ■フィールド
-
-        private Settings_FC2           _Settings;                                                       //設定
+        //設定
+        private Settings_FC2           _Settings;
         private SettingFormData_FC2    _SettingFormData;
-        private string                 _SettingFile = Base.CallAsmPath + Base.CallAsmName + ".setting"; //設定ファイルの保存場所
-        private System.Threading.Timer _Timer;                                                          //タイマ
+        //設定ファイルの保存場所
+        private string                 _SettingFile = Base.CallAsmPath + Base.CallAsmName + ".setting";
+        //タイマ
+        private System.Threading.Timer _Timer;
         private ToolStripButton        _Button;
         private ToolStripSeparator     _Separator;
         private bool _IconStatus;
         private bool _SettingStatus;
         private long _LastCommentIndex;
         private long _LastCommentIndexTmp;
+        private long _AnonymousIndex;
+        private Dictionary<string, long> _AnonymousHash;
+        private string[] _GiftItems;
 
         #endregion
 
@@ -34,9 +39,7 @@ namespace Plugin_FC2 {
         #region ■IPluginメンバの実装
 
         public string           Name            { get { return "FC2ライブ読み上げ API ver"; } }
-
-        public string           Version         { get { return "2018/12/16版"; } }
-
+        public string           Version         { get { return "2019/05/13版"; } }
         public string           Caption         { get { return "FC2ライブのコメントを読み上げます。"; } }
 
         //プラグインの設定画面情報（設定画面が必要なければnullを返す）
@@ -50,8 +53,8 @@ namespace Plugin_FC2 {
             this._SettingFormData = new SettingFormData_FC2(this._Settings);
             this._IconStatus = true;
             this._SettingStatus = true;
-            this._LastCommentIndex = -1;
-            this._LastCommentIndexTmp = -2;
+            this.ResetCommentIndex();
+            this._GiftItems = new string[] {"風船", "ハート", "ダイヤ"};
 
             //タイマー登録
             this._Timer = new System.Threading.Timer(this.Timer_Event, null, 0, 1000);
@@ -128,10 +131,27 @@ namespace Plugin_FC2 {
         internal void ResetCommentIndex() {
             this._LastCommentIndex = -1;
             this._LastCommentIndexTmp = -2;
+            this._AnonymousIndex = 0;
+            this._AnonymousHash = new Dictionary<string, long>();
         }
 
         internal void SetSettingStatus() {
             this._SettingStatus = (this._Settings.Token != "" && this._Settings.ChannelID != "");
+        }
+
+        private long getAnonymousIndex(string hash) {
+            if (this._AnonymousHash.ContainsKey(hash)) {
+                return this._AnonymousHash[hash];
+            }
+            this._AnonymousHash.Add(hash, ++this._AnonymousIndex);
+            return this._AnonymousIndex;
+        }
+
+        private string getGiftItemName(int id) {
+            if(this._GiftItems.Length < id + 1) {
+                return "何か";
+            }
+            return this._GiftItems[id];
         }
 
         private void AddCommentTalk(long lastCommentIndex) {
@@ -145,7 +165,33 @@ namespace Plugin_FC2 {
                             this._LastCommentIndex = commentData.last_comment_index;
                             if (lastCommentIndex >= 0) {
                                 foreach (Comment comment in commentData.comments) {
-                                    Pub.AddTalkTask(comment.comment, -1, -1, VoiceType.Default);
+                                    if (comment.anonymous == 1) {
+                                        long anonymousIndex = this.getAnonymousIndex(comment.hash);
+                                        comment.user_name = this._Settings.AnonymousString.Replace("%d", anonymousIndex.ToString());
+                                    }
+                                    string commentText;
+                                    if(comment.system_comment == null) {
+                                        commentText = this._Settings.CommentString.Replace("%1$s", comment.user_name).Replace("%2$s", comment.comment);
+                                    } else {
+                                        switch (comment.system_comment.type) {
+                                            case "gift":
+                                                commentText = this._Settings.GiftString.Replace("%1$s", comment.user_name)
+                                                    .Replace("%2$s", this.getGiftItemName(comment.system_comment.gift_id));
+                                                if(comment.system_comment.tip_amount > 0) {
+                                                    commentText.Replace("%1$d", comment.system_comment.tip_amount.ToString())
+                                                        .Replace("%2$d", comment.system_comment.tip_total.ToString());
+                                                }
+                                                break;
+                                            case "tip":
+                                                commentText = this._Settings.GiftString.Replace("%1$s", comment.user_name)
+                                                    .Replace("%1$d", comment.system_comment.tip_amount.ToString())
+                                                    .Replace("%2$d", comment.system_comment.tip_total.ToString());
+                                                break;
+                                            default:
+                                                continue;
+                                        }
+                                    }
+                                    Pub.AddTalkTask(commentText, -1, -1, VoiceType.Default);
                                 }
                             } else {
                                 this.ChangeIcon(true);
@@ -261,6 +307,7 @@ namespace Plugin_FC2 {
 
         public class SystemComment {
             public string type;
+            public int gift_id;
             public int tip_amount;
             public int tip_total;
         }
@@ -272,15 +319,22 @@ namespace Plugin_FC2 {
 
             public string ChannelID;
             public string Token;
-            public string CommentRegExp;
-            public string TipRegExp;
-            public string GiftRegExp;
+            public string AnonymousString;
+            public string CommentString;
+            public string TipString;
+            public string GiftString;
+            public string GiftPointString;
 
             //作成元プラグイン
             internal Plugin_FC2 Plugin;
 
             //コンストラクタ
             public Settings_FC2() {
+                this.AnonymousString = "匿名(%d)";
+                this.CommentString = "%2$s";
+                this.TipString = "%1$sさんが%1$dポイントチップしました";
+                this.GiftString = "%1$sさんが%2$sをプレゼントしました";
+                this.GiftPointString = "%1$sさんが%2$sをプレゼントしました";
             }
 
             //コンストラクタ
@@ -336,22 +390,34 @@ namespace Plugin_FC2 {
                 public string Token { get { return this._Setting.Token; } set { this._Setting.Token = value; } }
 
                 [Category   ("詳細設定")]
+                [DisplayName("匿名表記")]
+                [Description("匿名の形式\n%d: 匿名番号\n\n例）匿名(%d)")]
+                [DefaultValue("匿名(%d)")]
+                public string AnonymousString { get { return this._Setting.AnonymousString; } set { this._Setting.AnonymousString = value; } }
+
+                [Category   ("詳細設定")]
                 [DisplayName("コメント形式")]
-                [Description("コメントの形式\n%1$s: 名前\n%2$s: コメント")]
-                [Browsable(false)]
-                public string CommentRegExp { get { return this._Setting.CommentRegExp; } set { this._Setting.CommentRegExp = value; } }
+                [Description("コメントの形式\n%1$s: 名前\n%2$s: コメント\n\n例）%1$sさん %2$s")]
+                [DefaultValue("%2$s")]
+                public string CommentString { get { return this._Setting.CommentString; } set { this._Setting.CommentString = value; } }
 
                 [Category   ("詳細設定")]
                 [DisplayName("チップコメント形式")]
-                [Description("チップコメントの形式\n%1$s: 名前\n%1$d: チップポイント数")]
-                [Browsable(false)]
-                public string TipRegExp { get { return this._Setting.TipRegExp; } set { this._Setting.TipRegExp = value; } }
+                [Description("チップコメントの形式\n%1$s: 名前\n%1$d: チップポイント数\n%2$d: チップポイントトータル\n\n例）%1$sさんが%1$dポイントチップしました トータル%2$dポイント")]
+                [DefaultValue("%1$sさんが%1$dポイントチップしました")]
+                public string TipString { get { return this._Setting.TipString; } set { this._Setting.TipString = value; } }
 
                 [Category   ("詳細設定")]
                 [DisplayName("プレゼントコメント形式")]
-                [Description("プレゼントコメントの形式\n%1$s: 名前\n%2$s: プレゼント名\n%1$d: プレゼントポイント数")]
-                [Browsable(false)]
-                public string GiftRegExp { get { return this._Setting.GiftRegExp; } set { this._Setting.GiftRegExp = value; } }
+                [Description("プレゼントコメントの形式\n%1$s: 名前\n%2$s: プレゼント名\n\n例）%1$sさんが%2$sをプレゼントしました")]
+                [DefaultValue("%1$sさんが%2$sをプレゼントしました")]
+                public string GiftString { get { return this._Setting.GiftString; } set { this._Setting.GiftString = value; } }
+
+                [Category   ("詳細設定")]
+                [DisplayName("チップ付きプレゼント形式")]
+                [Description("チップ付きプレゼントの形式\n%1$s: 名前\n%2$s: プレゼント名\n%1$d: チップポイント数\n%2$d: チップポイントトータル\n\n例）%1$sさんが%1$dポイントの%2$sをプレゼントしました トータル%2$dポイント")]
+                [DefaultValue("%1$sさんが%2$sをプレゼントしました")]
+                public string GiftPointString { get { return this._Setting.GiftPointString; } set { this._Setting.GiftPointString = value; } }
 
                 /* ISettingPropertyGridでは設定画面での表示項目を指定できます。
                 [Category   ("分類")]

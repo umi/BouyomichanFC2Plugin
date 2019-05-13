@@ -46,7 +46,7 @@
   <ItemGroup>
     <Reference Include="BouyomiChan, Version=1.0.0.0, Culture=neutral, PublicKeyToken=1c96d45f60dba1bd, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\BouyomiChan.exe</HintPath>
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\BouyomiChan_0_1_11_0_Beta16\BouyomiChan.exe</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
