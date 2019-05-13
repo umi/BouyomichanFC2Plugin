@@ -21,7 +21,7 @@ Bouyomichan FC2 Plugin Comment Api Version.
 ![設定](https://github.com/umi/BouyomichanFC2Plugin/blob/images/settings.png "設定")
 ---
 
-* FC2のマークをクリックしてON/OFF出来たら設定完了です
+* 配信中にFC2のマークをクリックしてON/OFF出来たら設定完了です
 
 ![棒読みちゃん](https://github.com/umi/BouyomichanFC2Plugin/blob/images/bouyomi.png "棒読みちゃん")
 
