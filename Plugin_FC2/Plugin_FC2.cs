@@ -181,12 +181,15 @@ namespace Plugin_FC2 {
                                                 if (!this._Settings.GiftFlg) {
                                                     continue;
                                                 }
-                                                commentText = this._Settings.GiftString.Replace("%1$s", comment.user_name)
-                                                    .Replace("%2$s", this.getGiftItemName(comment.system_comment.gift_id));
                                                 if (comment.system_comment.tip_amount > 0) {
-                                                    commentText.Replace("%1$d", comment.system_comment.tip_amount.ToString())
-                                                        .Replace("%2$d", comment.system_comment.tip_total.ToString());
+                                                    commentText = this._Settings.GiftPointString;
+                                                } else {
+                                                    commentText = this._Settings.GiftString;
                                                 }
+                                                commentText = commentText.Replace("%1$s", comment.user_name)
+                                                    .Replace("%2$s", this.getGiftItemName(comment.system_comment.gift_id))
+                                                    .Replace("%1$d", comment.system_comment.tip_amount.ToString())
+                                                    .Replace("%2$d", comment.system_comment.tip_total.ToString());
                                                 break;
                                             case "tip":
                                                 if (!this._Settings.TipFlg) {
