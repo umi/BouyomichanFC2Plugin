@@ -39,7 +39,7 @@ namespace Plugin_FC2 {
         #region ■IPluginメンバの実装
 
         public string           Name            { get { return "FC2ライブ読み上げ API ver"; } }
-        public string           Version         { get { return "2019/05/14版"; } }
+        public string           Version         { get { return "2019/05/19版"; } }
         public string           Caption         { get { return "FC2ライブのコメントを読み上げます。"; } }
 
         //プラグインの設定画面情報（設定画面が必要なければnullを返す）
@@ -162,6 +162,9 @@ namespace Plugin_FC2 {
                     this._LastCommentIndexTmp = -2;
                     switch (commentData.status) {
                         case 0:
+                            if (lastCommentIndex >= commentData.last_comment_index) {
+                                break;
+                            }
                             this._LastCommentIndex = commentData.last_comment_index;
                             if (lastCommentIndex >= 0) {
                                 foreach (Comment comment in commentData.comments) {
@@ -233,8 +236,14 @@ namespace Plugin_FC2 {
                             Pub.AddTalkTask("FC2ライブの読み上げを終了します", -1, -1, VoiceType.Default);
                             Pub.AddTalkTask("視聴していないチャンネルです", -1, -1, VoiceType.Default);
                             break;
-                        case 98:
                         case 99:
+                            if (!this._Settings.Discard99Flg) {
+                                this._Settings.TimeSignal = false;
+                                Pub.AddTalkTask("FC2ライブの読み上げを終了します", -1, -1, VoiceType.Default);
+                                Pub.AddTalkTask("エラーが発生しました", -1, -1, VoiceType.Default);
+                            }
+                            break;
+                        case 98:
                         default:
                             this._Settings.TimeSignal = false;
                             Pub.AddTalkTask("FC2ライブの読み上げを終了します", -1, -1, VoiceType.Default);
@@ -341,6 +350,7 @@ namespace Plugin_FC2 {
             public bool CommentFlg;
             public bool TipFlg;
             public bool GiftFlg;
+            public bool Discard99Flg;
 
             //作成元プラグイン
             internal Plugin_FC2 Plugin;
@@ -349,12 +359,13 @@ namespace Plugin_FC2 {
             public Settings_FC2() {
                 this.AnonymousString = "匿名(%d)";
                 this.CommentString = "%2$s";
-                this.TipString = "%1$sさんが%1$dポイントチップしました";
-                this.GiftString = "%1$sさんが%2$sをプレゼントしました";
-                this.GiftPointString = "%1$sさんが%2$sをプレゼントしました";
+                this.TipString = "%1$dポイントを%1$sさんがチップしました";
+                this.GiftString = "%2$sを%1$sさんがプレゼントしました";
+                this.GiftPointString = "%2$sを%1$sさんがプレゼントしました";
                 this.CommentFlg = true;
                 this.TipFlg = true;
                 this.GiftFlg = true;
+                this.Discard99Flg = false;
             }
 
             //コンストラクタ
@@ -395,65 +406,75 @@ namespace Plugin_FC2 {
                 public SBase(Settings_FC2 setting) { this._Setting = setting; }
                 public string GetName() { return "設定"; }
 
-                [Category   ("基本設定")]
+                [Category   ("01)基本設定")]
                 [DisplayName("01)チャンネルID")]
                 [Description("読み上げ対象のチャンネルID\nhttps://live.fc2.com/65177747/ なら 65177747 の部分を入力")]
                 public string ChannelID { get { return this._Setting.ChannelID; } set { this._Setting.ChannelID = value; } }
 
-                [Category   ("基本設定")]
+                [Category   ("01)基本設定")]
                 [DisplayName("02)コメントAPIトークン")]
                 [Description("FC2ライブのユーザー設定ページ(https://live.fc2.com/profile_edit/)の\n→コメントAPIの設定\n→アクセストークンを入力")]
                 public string Token { get { return this._Setting.Token; } set { this._Setting.Token = value; } }
 
-                [Category   ("基本設定")]
+                [Category   ("01)基本設定")]
                 [DisplayName("03)読み上げを有効にする")]
                 [Description("false にすると、読み上げ自体を停止します")]
+                [DefaultValue(true)]
                 public bool TimeSignal { get { return this._Setting.TimeSignal; } set { this._Setting.TimeSignal = value; } }
 
-                [Category   ("基本設定")]
+                [Category   ("01)基本設定")]
                 [DisplayName("04)通常コメントの読み上げを有効にする")]
                 [Description("false にすると、通常コメントの読み上げを停止します")]
+                [DefaultValue(true)]
                 public bool CommentFlg { get { return this._Setting.CommentFlg; } set { this._Setting.CommentFlg = value; } }
 
-                [Category   ("基本設定")]
+                [Category   ("01)基本設定")]
                 [DisplayName("05)チップの読み上げを有効にする")]
                 [Description("false にすると、チップコメントの読み上げを停止します")]
+                [DefaultValue(true)]
                 public bool TipFlg { get { return this._Setting.TipFlg; } set { this._Setting.TipFlg = value; } }
 
-                [Category   ("基本設定")]
+                [Category   ("01)基本設定")]
                 [DisplayName("06)ギフトの読み上げを有効にする")]
                 [Description("false にすると、ギフトコメントの読み上げを停止します")]
+                [DefaultValue(true)]
                 public bool GiftFlg { get { return this._Setting.GiftFlg; } set { this._Setting.GiftFlg = value; } }
 
-                [Category   ("詳細設定")]
+                [Category   ("02)詳細設定")]
                 [DisplayName("01)匿名の表記")]
                 [Description("%d ： 匿名番号\n\n例）匿名(%d) \n→ 匿名(1)")]
                 [DefaultValue("匿名(%d)")]
                 public string AnonymousString { get { return this._Setting.AnonymousString; } set { this._Setting.AnonymousString = value; } }
 
-                [Category   ("詳細設定")]
+                [Category   ("02)詳細設定")]
                 [DisplayName("02)コメントの形式")]
                 [Description("%1$s ： [名前]\n%2$s ： [コメント]\n\n例）%1$sさん %2$s \n→ [名前]さん [コメント]")]
                 [DefaultValue("%2$s")]
                 public string CommentString { get { return this._Setting.CommentString; } set { this._Setting.CommentString = value; } }
 
-                [Category   ("詳細設定")]
+                [Category   ("02)詳細設定")]
                 [DisplayName("03)チップコメントの形式")]
                 [Description("%1$s ： [名前]\n%1$d ： [チップポイント数]\n%2$d ： [チップポイントトータル]\n\n例）%1$sさんが%1$dポイントチップしました トータル%2$dポイント \n→ [名前]さんが[チップポイント数]ポイントチップしました トータル[チップポイントトータル]ポイント")]
-                [DefaultValue("%1$sさんが%1$dポイントチップしました")]
+                [DefaultValue("%1$dポイントを%1$sさんがチップしました")]
                 public string TipString { get { return this._Setting.TipString; } set { this._Setting.TipString = value; } }
 
-                [Category   ("詳細設定")]
+                [Category   ("02)詳細設定")]
                 [DisplayName("04)プレゼントコメントの形式")]
                 [Description("%1$s ： [名前]\n%2$s ： [プレゼント名]\n\n例）%1$sさんが%2$sをプレゼントしました \n→ [名前]さんが[プレゼント名]をプレゼントしました")]
-                [DefaultValue("%1$sさんが%2$sをプレゼントしました")]
+                [DefaultValue("%2$sを%1$sさんがプレゼントしました")]
                 public string GiftString { get { return this._Setting.GiftString; } set { this._Setting.GiftString = value; } }
 
-                [Category   ("詳細設定")]
+                [Category   ("02)詳細設定")]
                 [DisplayName("05)チップ付きプレゼントの形式")]
                 [Description("%1$s ： [名前]\n%2$s: [プレゼント名]\n%1$d ： [チップポイント数]\n%2$d ： [チップポイントトータル]\n\n例）%1$sさんが%1$dポイントの%2$sをプレゼントしました トータル%2$dポイント \n→ [名前]さんが[プレゼント名]をプレゼントしました トータル[チップポイントトータル]ポイント")]
-                [DefaultValue("%1$sさんが%2$sをプレゼントしました")]
+                [DefaultValue("%2$sを%1$sさんがプレゼントしました")]
                 public string GiftPointString { get { return this._Setting.GiftPointString; } set { this._Setting.GiftPointString = value; } }
+
+                [Category   ("03)エラー設定")]
+                [DisplayName("01)99番のエラーを無視する")]
+                [Description("必要な時のみtrueにしてください")]
+                [DefaultValue(false)]
+                public bool Discard99Flg { get { return this._Setting.Discard99Flg; } set { this._Setting.Discard99Flg = value; } }
 
                 /* ISettingPropertyGridでは設定画面での表示項目を指定できます。
                 [Category   ("分類")]
