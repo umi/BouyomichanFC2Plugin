@@ -39,7 +39,7 @@ namespace Plugin_FC2 {
         #region ■IPluginメンバの実装
 
         public string           Name            { get { return "FC2ライブ読み上げ API ver"; } }
-        public string           Version         { get { return "2019/05/19版"; } }
+        public string           Version         { get { return "2019/05/23版"; } }
         public string           Caption         { get { return "FC2ライブのコメントを読み上げます。"; } }
 
         //プラグインの設定画面情報（設定画面が必要なければnullを返す）
