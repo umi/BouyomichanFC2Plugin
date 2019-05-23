@@ -340,32 +340,23 @@ namespace Plugin_FC2 {
             //保存される情報（設定画面からも参照される）
             public bool TimeSignal = true;
 
-            public string ChannelID;
-            public string Token;
-            public string AnonymousString;
-            public string CommentString;
-            public string TipString;
-            public string GiftString;
-            public string GiftPointString;
-            public bool CommentFlg;
-            public bool TipFlg;
-            public bool GiftFlg;
-            public bool Discard99Flg;
+            public string ChannelID = "";
+            public string Token = "";
+            public string AnonymousString = "匿名(%d)";
+            public string CommentString = "%2$s";
+            public string TipString = "%1$dポイントを%1$sさんがチップしました";
+            public string GiftString = "%2$sを%1$sさんがプレゼントしました";
+            public string GiftPointString = "%2$sを%1$sさんがプレゼントしました";
+            public bool CommentFlg = true;
+            public bool TipFlg = true;
+            public bool GiftFlg = true;
+            public bool Discard99Flg = false;
 
             //作成元プラグイン
             internal Plugin_FC2 Plugin;
 
             //コンストラクタ
             public Settings_FC2() {
-                this.AnonymousString = "匿名(%d)";
-                this.CommentString = "%2$s";
-                this.TipString = "%1$dポイントを%1$sさんがチップしました";
-                this.GiftString = "%2$sを%1$sさんがプレゼントしました";
-                this.GiftPointString = "%2$sを%1$sさんがプレゼントしました";
-                this.CommentFlg = true;
-                this.TipFlg = true;
-                this.GiftFlg = true;
-                this.Discard99Flg = false;
             }
 
             //コンストラクタ
