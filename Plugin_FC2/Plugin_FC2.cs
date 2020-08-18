@@ -31,7 +31,7 @@ namespace Plugin_FC2 {
         private long _LastCommentIndexTmp;
         private long _AnonymousIndex;
         private Dictionary<string, long> _AnonymousHash;
-        private string[] _GiftItems;
+        private Dictionary<int, string> _GiftItems;
 
         #endregion
 
@@ -39,7 +39,7 @@ namespace Plugin_FC2 {
         #region ■IPluginメンバの実装
 
         public string           Name            { get { return "FC2ライブ読み上げ API ver"; } }
-        public string           Version         { get { return "2019/05/23版"; } }
+        public string           Version         { get { return "2020/08/18版"; } }
         public string           Caption         { get { return "FC2ライブのコメントを読み上げます。"; } }
 
         //プラグインの設定画面情報（設定画面が必要なければnullを返す）
@@ -54,7 +54,23 @@ namespace Plugin_FC2 {
             this._IconStatus = true;
             this._SettingStatus = false;
             this.ResetCommentIndex();
-            this._GiftItems = new string[] {"風船", "ハート", "ダイヤ"};
+            this._GiftItems = new Dictionary<int, string>(){
+                {0, "風船"},
+                {1, "ハート"},
+                {2, "ダイヤ"},
+                {3, "ドーナツ"},
+                {4, "ニンジャ"},
+                {5, "キャンディ"},
+                {6, "クラッカー"},
+                {7, "花火"},
+                {8, "キッス"},
+                {9, "いいね"},
+                {10, "車"},
+                {11, "さかな"},
+                {12, "UFO"},
+                {13, "シャンパン"},
+                {999, "オチャコ"}
+            };
 
             //タイマー登録
             this._Timer = new System.Threading.Timer(this.Timer_Event, null, 0, 1000);
@@ -148,10 +164,10 @@ namespace Plugin_FC2 {
         }
 
         private string getGiftItemName(int id) {
-            if(this._GiftItems.Length < id + 1) {
-                return "何か";
+            if(this._GiftItems.ContainsKey(id)) {
+                return this._GiftItems[id];
             }
-            return this._GiftItems[id];
+            return "何か";
         }
 
         private void AddCommentTalk(long lastCommentIndex) {
